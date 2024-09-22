@@ -13,15 +13,22 @@ from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.properties import BooleanProperty, StringProperty
 from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.uix.scrollview import ScrollView
+import random
+
+# Generate a random number between 0 and 1
+# random_number = random.random()
 
 # GitHub settings
 GITHUB_USERNAME = 'Ruudddiiii'
 REPO_NAME = 'TaskTravelTime'
-GITHUB_TOKEN = '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'
+GITHUB_TOKEN = ''
 TASK_FILE = 'tasks.json'
 
 # GitHub API URLs
 REPO_API_URL = f'https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/{TASK_FILE}'
+Window.clearcolor = (random.random(), random.random(), random.random(), random.random())
 
 # Function to load tasks from GitHub
 def load_tasks_from_github():
@@ -60,71 +67,57 @@ def save_tasks_to_github(tasks):
     except Exception as e:
         print(f"Error saving tasks to GitHub: {e}")
 
-# RecycleView item with selectable behavior
 class SelectableTaskItem(RecycleDataViewBehavior, BoxLayout):
-    text = StringProperty()  # Task text
-    selected = BooleanProperty(False)  # Selection state
+    text = StringProperty()
+    selected = BooleanProperty(False)
 
     def refresh_view_attrs(self, rv, index, data):
-        """ Update the task item view with provided data """
+        # Set the label text for the task
         self.text = data['text']
         return super(SelectableTaskItem, self).refresh_view_attrs(rv, index, data)
 
-    def on_touch_down(self, touch):
-        """ Handle task selection on touch """
-        if super(SelectableTaskItem, self).on_touch_down(touch):
-            return True
-        if self.collide_point(*touch.pos):
-            # Toggle the selection state
-            self.selected = not self.selected
-            self.parent.select_task(self)
-            return True
-        return False
-
+    
 # Task list display (RecycleView)
 class TaskListView(RecycleView):
     def __init__(self, **kwargs):
         super(TaskListView, self).__init__(**kwargs)
-        self.data = []
-        self.viewclass = 'SelectableTaskItem'
-        self.selected_task = None  # Variable to store selected task
-
-    def select_task(self, task):
-        """ Store the selected task """
-        # Deselect the previously selected task
-        if self.selected_task and self.selected_task != task:
-            self.selected_task.selected = False
-        
-        # Set the new task as selected
-        self.selected_task = task
+        # Use RecycleBoxLayout to allow dynamic height adjustment
+        self.layout = RecycleBoxLayout(default_size=(None, 26),
+                                       size_hint_y=None,
+                                       orientation='horizontal')
+        self.layout.bind(minimum_height=self.layout.setter('height'))
+        self.add_widget(self.layout)
 
     def update_tasks(self, tasks):
-        """ Update the RecycleView data """
+        # Update task list and clear previous selection
         self.data = [{'text': task['name']} for task in tasks]
         self.refresh_from_data()
 
 # Main app class
 class TaskManagerApp(App):
+
     def build(self):
         # Set the path to the custom icon
         self.icon = '/home/ruddi/Downloads/task.png'  # Replace with the actual path to your icon
 
-          # Main layout for the app
+        # Main layout for the app
         self.layout = BoxLayout(orientation='vertical')
 
-        # Label to display all tasks (Moved to the top)
-
-
-        # Input for new tasks (Moved down)
+        # Input for new tasks
         self.new_task_input = TextInput(hint_text='Enter new task', size_hint=(1, 0.2))
         self.layout.add_widget(self.new_task_input)
 
-        self.display_label = Label(text='Your tasks will appear here', size_hint=(1, 0.2), font_size='28sp')
+        # Label to display all tasks
+        self.display_label = Label(text='SYNC', size_hint=(1, 0.1), font_size='28sp')
         self.layout.add_widget(self.display_label)
 
-        # Task list display (RecycleView)
-        self.task_list = TaskListView(size_hint=(1, 0.7))
-        self.layout.add_widget(self.task_list)
+        # Scrollable task list display
+        scroll_view = ScrollView(size_hint=(1, 0.6))  # Adjust size_hint as needed
+        self.task_list = TaskListView(size_hint_y=None)  # RecycleView will be added here
+        scroll_view.add_widget(self.task_list)
+
+        # Add the ScrollView to the main layout
+        self.layout.add_widget(scroll_view)
 
         # Create a BoxLayout to center the buttons horizontally
         button_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.1), padding=[50, 0], spacing=20)
@@ -134,10 +127,15 @@ class TaskManagerApp(App):
         add_task_button.bind(on_press=self.add_task)
         button_layout.add_widget(add_task_button)
 
-        # Button to delete selected task
+        # Button to delete the most recent task
         delete_task_button = Button(text='Delete Task', size_hint=(0.3, 1))
         delete_task_button.bind(on_press=self.delete_task)
         button_layout.add_widget(delete_task_button)
+
+        # Button to undo the most recent delete
+        undo_delete_button = Button(text='Undo Delete', size_hint=(0.3, 1))
+        undo_delete_button.bind(on_press=self.undo_delete)
+        button_layout.add_widget(undo_delete_button)
 
         # Button to save changes to GitHub
         save_changes_button = Button(text='Save Changes', size_hint=(0.3, 1))
@@ -150,8 +148,11 @@ class TaskManagerApp(App):
         # Schedule the task loading after UI is ready (delayed by 1 second)
         Clock.schedule_once(self.load_tasks, 1)
 
+        # List to store all deleted tasks
+        self.deleted_tasks = []
+
         return self.layout
-    
+
     def load_tasks(self, dt):
         """ Load tasks from GitHub """
         self.tasks = load_tasks_from_github()
@@ -159,13 +160,16 @@ class TaskManagerApp(App):
         self.update_display_label()
 
     def add_task(self, instance):
-        """ Add a new task from the input field """
+        """ Add a new task """
         new_task = self.new_task_input.text.strip()
         if new_task:
             self.tasks.append({"name": new_task, "completed": False})
+            print(f"Added task: {new_task}")  # Debug log
             self.task_list.update_tasks(self.tasks)
             self.update_display_label()
-            self.new_task_input.text = ''  # Clear input field after adding task
+            self.new_task_input.text = ''
+        else:
+            print("Input is empty, no task added")  # Log if input is empty
 
     def update_display_label(self):
         """ Update the label to display all tasks """
@@ -173,13 +177,29 @@ class TaskManagerApp(App):
         self.display_label.text = task_list_str or 'Your tasks will appear here'
 
     def delete_task(self, instance):
-        """ Delete the selected task """
-        if self.task_list.selected_task:
-            task_name = self.task_list.selected_task.text
-            self.tasks = [task for task in self.tasks if task['name'] != task_name]
+        """ Delete the most recent task and store it in deleted_tasks list """
+        if self.tasks:
+            # Store the most recent task in the deleted_tasks list
+            deleted_task = self.tasks.pop()
+            self.deleted_tasks.append(deleted_task)
+            print(f"Deleted task: {deleted_task['name']}")  # Debug log
             self.task_list.update_tasks(self.tasks)
             self.update_display_label()
-            self.task_list.selected_task = None  # Reset selected task
+        else:
+            print("No tasks to delete")  # Log if no tasks available
+
+    def undo_delete(self, instance):
+        """ Restore all deleted tasks """
+        if self.deleted_tasks:
+            # Restore all tasks from the deleted_tasks list
+            while self.deleted_tasks:
+                restored_task = self.deleted_tasks.pop()
+                self.tasks.append(restored_task)
+                print(f"Restored task: {restored_task['name']}")  # Debug log
+            self.task_list.update_tasks(self.tasks)
+            self.update_display_label()
+        else:
+            print("No tasks to undo")  # Log if there are no tasks to undo
 
     def save_changes(self, instance):
         """ Save the current task list to GitHub """
