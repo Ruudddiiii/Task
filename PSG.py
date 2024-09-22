@@ -7,7 +7,7 @@ import base64
 # GitHub settings
 GITHUB_USERNAME = 'Ruudddiiii'
 REPO_NAME = 'TaskTravelTime'
-GITHUB_TOKEN = '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'
+GITHUB_TOKEN = ''
 TASK_FILE = 'tasks.json'
 
 # GitHub API URLs
