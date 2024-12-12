@@ -8,7 +8,7 @@ import base64
 GITHUB_USERNAME = 'Ruudddiiii'
 REPO_NAME = 'TaskTravelTime'
 GITHUB_TOKEN = ''
-TASK_FILE = 'tasks.json'
+TASK_FILE = 'task1.json'
 
 # GitHub API URLs
 RAW_FILE_URL = f'https://raw.githubusercontent.com/{GITHUB_USERNAME}/{REPO_NAME}/main/{TASK_FILE}'
@@ -59,6 +59,7 @@ tasks = load_tasks_from_github()
 
 # Define the layout of the GUI
 layout = [
+
     [sg.Text('Task List')],
     [sg.Listbox(values=[task['name'] for task in tasks], size=(60, 20), key='-TASK_LIST-')],
     [sg.InputText(key='-NEW_TASK-', size=(60, 1))],
@@ -103,6 +104,8 @@ while True:
     # Save changes to GitHub
     if event == 'Save Changes':
         save_tasks_to_github(tasks)
+
+
 
 # Close the window
 window.close()
