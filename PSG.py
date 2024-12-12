@@ -1,17 +1,32 @@
-import requests
-import json
+# Define the raw file URL
+$RAW_FILE_URL = "https://raw.githubusercontent.com/Ruudddiiii/TaskTravelTime/main/task1.json"
 
-RAW_FILE_URL = 'https://raw.githubusercontent.com/Ruudddiiii/TaskTravelTime/main/task1.json'
+# Function to load tasks from GitHub
+function Load-TasksFromGitHub {
+    try {
+        # Make a GET request to the URL
+        $response = Invoke-RestMethod -Uri $RAW_FILE_URL -Method Get
 
-def load_tasks_from_github():
-    try:
-        response = requests.get(RAW_FILE_URL)
-        response.raise_for_status()  # Raise an error for bad HTTP status
-        data = response.json()  # Parse the JSON content
-        return data.get('tasks', [])
-    except requests.exceptions.RequestException as e:
-        print(f"Error loading tasks: {e}")
-        return []
+        # Parse the JSON content
+        if ($response -and $response.tasks) {
+            return $response.tasks
+        } else {
+            Write-Output "No tasks found in the response."
+            return @()
+        }
+    } catch {
+        Write-Output "Error loading tasks from GitHub: $_"
+        return @()
+    }
+}
 
-tasks = load_tasks_from_github()
-print(tasks)
+# Call the function to load tasks
+$tasks = Load-TasksFromGitHub
+
+# Output the tasks
+if ($tasks.Count -gt 0) {
+    Write-Output "Tasks loaded successfully:"
+    $tasks | ForEach-Object { Write-Output " - $_.name" }
+} else {
+    Write-Output "No tasks to display."
+}
