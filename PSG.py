@@ -1,7 +1,7 @@
 # GitHub settings
 $GITHUB_USERNAME = "Ruudddiiii"
 $REPO_NAME = "TaskTravelTime"
-$GITHUB_TOKEN = "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"
+$GITHUB_TOKEN = "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"
 $TASK_FILE = "task1.json"
 
 # GitHub API URL for the contents API
