@@ -3,10 +3,21 @@ import base64
 import requests
 from requests.auth import HTTPBasicAuth
 import PySimpleGUI as sg
-import time
 import pyttsx3
-# from datetime import datetime
+from datetime import datetime
 import socket
+import numpy as np
+import sounddevice as sd
+
+def play_beep(frequency=50000, duration=0.2, volume=0.3):
+    # Generate a beep tone
+    samplerate = 44100
+    t = np.linspace(0, duration, int(samplerate * duration), endpoint=False)
+    waveform = volume * np.sin(2 * np.pi * frequency * t)
+    sd.play(waveform, samplerate)
+    sd.wait()  # Wait for the sound to finish
+
+
 
 def is_internet_available():
     """Check if the internet is available by trying to resolve a host."""
@@ -105,9 +116,11 @@ def travel_layout():
 
 def time_layout():
     return [
-        [sg.Text("Enter minutes:", font=("Helvetica", 14)), sg.InputText(size=(5, 1), key="-MINUTES-", font=("Helvetica", 14))],
+        # [sg.Listbox(values=["52","25","43","17"], key="-MINUTES-", enable_events=True, font=("Helvetica", 16))],
+        [sg.Combo(["52","25","43","17","1"], default_value='25',size=(10, 1), key="-MINUTES-", enable_events=True, font=("Helvetica", 16))],
+        # [sg.Text("Enter minutes:", font=("Helvetica", 14)), sg.InputText(size=(5, 1), key="-MINUTES-", font=("Helvetica", 14))],
         [sg.Text("Time Left:", font=("Helvetica", 14)), sg.Text("00:00", key="-TIMER-", font=("Helvetica", 14))],
-        [sg.Button("Start", font=("Helvetica", 14)), sg.Button("Exit", font=("Helvetica", 14))]
+        [sg.Button("Start", font=("Helvetica", 14))]
 
     ]
 
@@ -174,10 +187,8 @@ def main():
             else:
                 timer_running = False
                 window["-TIMER-"].update("Time's up!")
+                play_beep()
                 sg.popup("Time's up!")  # Optional notification
-                tts_engine.say("Time's up!")  # Text-to-speech alert
-                tts_engine.runAndWait()       # Wait for the speech to complete
-                sg.popup("Time's up!")        # Optional visual alert
 
         # Handle task operations
         if event in ("Add Task", "-NEW_TASK-" + "\r"):
